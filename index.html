@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PFP Appraiser — X Profile Valuation Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root{--gold:#f0c040;--black:#0a0a0a;--offwhite:#f5f0e8;--red:#e63030;--green:#1db954;--border:rgba(240,192,64,0.25)}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{min-height:100%;background:#0a0a0a}
+    .app{font-family:'Syne',sans-serif;background:#0a0a0a;color:#f5f0e8;min-height:100vh;position:relative;overflow-x:hidden}
+    .noise{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.6}
+    .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(240,192,64,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(240,192,64,0.04) 1px,transparent 1px);background-size:40px 40px}
+    .inner{position:relative;z-index:1;max-width:540px;margin:0 auto;padding:36px 24px 60px}
+    .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:36px}
+    .logo{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-family:'Space Mono',monospace}
+    .logo span{color:rgba(240,192,64,0.4)}
+    .tagline{font-size:10px;color:rgba(245,240,232,0.35);letter-spacing:.12em;text-transform:uppercase;font-family:'Space Mono',monospace;margin-top:4px}
+    .live-dot{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--green);font-family:'Space Mono',monospace;letter-spacing:.08em}
+    .live-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .hero{margin-bottom:28px}
+    .hero h1{font-size:clamp(28px,8vw,48px);font-weight:800;line-height:1.05;letter-spacing:-.02em}
+    .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),#fff8dc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hero p{font-size:12px;color:rgba(245,240,232,0.4);margin-top:10px;line-height:1.65;font-family:'Space Mono',monospace}
+    .examples{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+    .example-chip{font-size:11px;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.5);border:1px solid rgba(240,192,64,0.15);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all .15s;background:none}
+    .example-chip:hover{color:var(--gold);border-color:rgba(240,192,64,0.4);background:rgba(240,192,64,0.05)}
+    .search-wrap{display:flex;gap:10px;margin-bottom:20px;align-items:stretch}
+    .handle-input{flex:1;background:rgba(245,240,232,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:15px;font-weight:600;font-family:'Syne',sans-serif;color:var(--offwhite);outline:none;transition:border-color .2s}
+    .handle-input::placeholder{color:rgba(245,240,232,0.2);font-weight:400}
+    .handle-input:focus{border-color:var(--gold)}
+    .appraise-btn{background:var(--gold);color:var(--black);border:none;border-radius:8px;padding:14px 22px;font-size:13px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:all .15s;text-transform:uppercase}
+    .appraise-btn:hover{background:#f8d060;transform:translateY(-1px)}
+    .appraise-btn:active{transform:translateY(0)}
+    .appraise-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .error-msg{background:rgba(230,48,48,0.08);border:1px solid rgba(230,48,48,0.3);border-radius:8px;padding:14px 16px;font-size:12px;color:#f08080;font-family:'Space Mono',monospace;display:none;margin-bottom:14px;line-height:1.5}
+    .error-msg.visible{display:block}
+    .loading-state{text-align:center;padding:40px 0;display:none}
+    .loading-state.visible{display:block}
+    .loader-text{font-size:11px;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.5);letter-spacing:.1em;animation:blink 1.2s step-end infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+    .result-card{background:rgba(245,240,232,0.03);border:1px solid var(--border);border-radius:12px;padding:24px;display:none;animation:fadeUp .35s ease}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    .result-card.visible{display:block}
+    .profile-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
+    .pfp-wrap{position:relative;flex-shrink:0}
+    .pfp-placeholder{width:72px;height:72px;border-radius:50%;border:2px solid var(--gold);background:linear-gradient(135deg,#1a1500,#2a2000);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--gold);transition:border-color .3s,color .3s}
+    .verified-badge{position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:#1d9bf0;border:2px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff}
+    .profile-info{flex:1;min-width:0}
+    .profile-name{font-size:18px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .profile-handle{font-size:12px;color:rgba(245,240,232,0.4);font-family:'Space Mono',monospace;margin-bottom:10px}
+    .profile-stats{display:flex;gap:16px;flex-wrap:wrap}
+    .stat .num{font-size:14px;font-weight:700}
+    .stat .lbl{font-size:10px;color:rgba(245,240,232,0.35);text-transform:uppercase;letter-spacing:.08em;font-family:'Space Mono',monospace}
+    .roast-box{border-radius:10px;padding:18px 20px;margin-bottom:20px;animation:shakeIt .4s ease}
+    .roast-box.bad{background:rgba(230,48,48,0.08);border:1px solid rgba(230,48,48,0.35)}
+    .roast-box.good{background:rgba(29,185,84,0.07);border:1px solid rgba(29,185,84,0.3)}
+    @keyframes shakeIt{0%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(5px)}45%{transform:translateX(-4px)}60%{transform:translateX(3px)}75%{transform:translateX(-2px)}100%{transform:translateX(0)}}
+    .roast-label{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:8px}
+    .roast-label.bad{color:#e24b4a}
+    .roast-label.good{color:var(--green)}
+    .roast-emoji{font-size:22px;margin-bottom:8px;display:block}
+    .roast-text{font-size:13px;line-height:1.65;font-family:'Space Mono',monospace}
+    .roast-text.bad{color:#f08080}
+    .roast-text.good{color:#7defa7}
+    .section-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(240,192,64,0.6);font-family:'Space Mono',monospace;margin-bottom:14px}
+    .val-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+    .val-card{background:rgba(245,240,232,0.03);border:1px solid rgba(240,192,64,0.12);border-radius:8px;padding:14px 16px}
+    .val-card .label{font-size:10px;color:rgba(245,240,232,0.35);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;margin-bottom:6px}
+    .val-card .amount{font-size:20px;font-weight:800;color:var(--gold);letter-spacing:-.01em}
+    .val-card .note{font-size:10px;color:rgba(245,240,232,0.3);margin-top:3px;font-family:'Space Mono',monospace;line-height:1.5}
+    .total-box{background:linear-gradient(135deg,rgba(240,192,64,0.08),rgba(240,192,64,0.03));border:1px solid rgba(240,192,64,0.4);border-radius:10px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    .total-label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.6);margin-bottom:4px}
+    .total-amount{font-size:32px;font-weight:800;color:var(--gold)}
+    .factor-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(245,240,232,0.05);font-size:12px}
+    .factor-row:last-child{border-bottom:none}
+    .factor-name{color:rgba(245,240,232,0.55);font-family:'Space Mono',monospace}
+    .factor-val{font-weight:600;font-size:11px;font-family:'Space Mono',monospace}
+    .factor-val.up{color:var(--green)}
+    .factor-val.down{color:#e24b4a}
+    .factor-val.neutral{color:rgba(245,240,232,0.4)}
+    .share-btn{width:100%;padding:13px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--offwhite);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;cursor:pointer;text-transform:uppercase;transition:all .2s;margin-top:4px}
+    .share-btn:hover{background:rgba(240,192,64,0.08);border-color:var(--gold);color:var(--gold)}
+    .disclaimer{font-size:10px;color:rgba(245,240,232,0.18);font-family:'Space Mono',monospace;text-align:center;margin-top:32px;line-height:1.7}
+    .api-warning{background:rgba(240,192,64,0.06);border:1px solid rgba(240,192,64,0.2);border-radius:8px;padding:12px 16px;font-size:11px;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.6);margin-bottom:20px;line-height:1.6}
+    .api-warning a{color:var(--gold);text-decoration:none}
+    .api-warning a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="noise"></div>
+  <div class="grid-bg"></div>
+  <div class="inner">
+
+    <div class="header">
+      <div>
+        <div class="logo">PFP<span>/</span>Appraiser</div>
+        <div class="tagline">X profile valuation engine</div>
+      </div>
+      <div class="live-dot">LIVE</div>
+    </div>
+
+    <div class="hero">
+      <h1>How much is your<br><em>profile worth?</em></h1>
+      <p>Enter any X handle. We appraise your pfp + header value based on followers, engagement, niche &amp; influence tier. Low ballers get roasted. No mercy.</p>
+    </div>
+
+    <div class="api-warning">
+      ⚠ You need an Anthropic API key to run this locally. Set <strong>ANTHROPIC_API_KEY</strong> in a backend proxy or replace the fetch URL below. <a href="https://console.anthropic.com" target="_blank">Get a key →</a>
+    </div>
+
+    <div class="examples">
+      <button class="example-chip" onclick="tryExample('elonmusk')">@elonmusk</button>
+      <button class="example-chip" onclick="tryExample('De_Ciphera')">@De_Ciphera</button>
+      <button class="example-chip" onclick="tryExample('VitalikButerin')">@VitalikButerin</button>
+      <button class="example-chip" onclick="tryExample('cobie')">@cobie</button>
+      <button class="example-chip" onclick="tryExample('cryptonoob123')">@cryptonoob123</button>
+    </div>
+
+    <div class="search-wrap">
+      <input class="handle-input" id="handleInput" type="text" placeholder="@handle or username" maxlength="50" autocomplete="off" spellcheck="false"/>
+      <button class="appraise-btn" id="appraiseBtn" onclick="appraise()">Appraise ↗</button>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <div class="loading-state" id="loadingState">
+      <div class="loader-text" id="loaderText">FETCHING PROFILE DATA...</div>
+    </div>
+
+    <div class="result-card" id="resultCard">
+
+      <div class="profile-row">
+        <div class="pfp-wrap">
+          <div class="pfp-placeholder" id="pfpDisplay">?</div>
+          <div class="verified-badge" id="verifiedBadge" style="display:none">✓</div>
+        </div>
+        <div class="profile-info">
+          <div class="profile-name" id="profileName">—</div>
+          <div class="profile-handle" id="profileHandle">@—</div>
+          <div class="profile-stats" id="profileStats"></div>
+        </div>
+      </div>
+
+      <div id="roastSection"></div>
+
+      <div class="section-title">Breakdown</div>
+      <div class="val-grid">
+        <div class="val-card">
+          <div class="label">Profile picture</div>
+          <div class="amount" id="pfpValue">—</div>
+          <div class="note" id="pfpNote">—</div>
+        </div>
+        <div class="val-card">
+          <div class="label">Header / banner</div>
+          <div class="amount" id="headerValue">—</div>
+          <div class="note" id="headerNote">—</div>
+        </div>
+      </div>
+
+      <div class="total-box">
+        <div>
+          <div class="total-label">Total profile value</div>
+          <div style="font-size:10px;color:rgba(240,192,64,0.4);font-family:'Space Mono',monospace" id="tierBadgeWrap"></div>
+        </div>
+        <div class="total-amount" id="totalValue">—</div>
+      </div>
+
+      <div class="section-title">Value factors</div>
+      <div id="factorsList" style="margin-bottom:20px"></div>
+
+      <button class="share-btn" onclick="shareResult()">Share this appraisal ↗</button>
+
+    </div>
+
+    <div class="disclaimer">
+      Valuations are AI-generated estimates based on social metrics &amp; influence modelling.<br>
+      Not financial advice. For entertainment purposes. Roasts are lovingly savage.<br><br>
+      Built by <a href="https://x.com/De_Ciphera" target="_blank" style="color:rgba(240,192,64,0.5);text-decoration:none">@De_Ciphera</a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  /* ─── CONFIG ───────────────────────────────────────────────
+     Replace the API_URL with your backend proxy endpoint
+     if you want to keep your Anthropic key safe.
+     For quick testing you can call the Anthropic API directly
+     but never ship a public site with a hardcoded key.
+  ─────────────────────────────────────────────────────────── */
+  const API_URL = 'https://api.anthropic.com/v1/messages';
+  // const API_URL = 'https://your-render-proxy.onrender.com/api/appraise';
+
+  const ANTHROPIC_API_KEY = ''; // ← paste your key here for local testing only
+
+  const LOADER_MSGS = [
+    'FETCHING PROFILE DATA...','ANALYZING FOLLOWER GRAPH...',
+    'SCORING ENGAGEMENT RATE...','RUNNING INFLUENCE MODEL...',
+    'CALCULATING PFP VALUE...','APPRAISING HEADER ASSET...',
+    'FINALIZING VALUATION...'
+  ];
+
+  let loaderInterval = null;
+
+  function tryExample(h) {
+    document.getElementById('handleInput').value = h;
+    appraise();
+  }
+
+  function fmtNum(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(Math.round(n));
+  }
+
+  function usd(n) {
+    if (n >= 1000000) return '$' + (n / 1000000).toFixed(2) + 'M';
+    if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'K';
+    return '$' + Math.round(n);
+  }
+
+  function setLoading(on) {
+    document.getElementById('loadingState').classList.toggle('visible', on);
+    document.getElementById('appraiseBtn').disabled = on;
+    if (on) {
+      let i = 0;
+      const el = document.getElementById('loaderText');
+      el.textContent = LOADER_MSGS[0];
+      loaderInterval = setInterval(() => {
+        i = (i + 1) % LOADER_MSGS.length;
+        el.textContent = LOADER_MSGS[i];
+      }, 700);
+    } else {
+      clearInterval(loaderInterval);
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  async function appraise() {
+    const handle = document.getElementById('handleInput').value.trim().replace(/^@/, '');
+    if (!handle) return;
+
+    document.getElementById('resultCard').classList.remove('visible');
+    document.getElementById('errorMsg').classList.remove('visible');
+    setLoading(true);
+
+    const prompt = `You are a savage but accurate social media profile valuation engine. Given the X (Twitter) handle "${handle}", estimate the monetary value of their profile picture and header/banner as digital brand assets.
+
+Return ONLY valid JSON with exactly these fields:
+{
+  "name": "realistic display name or the handle itself",
+  "handle": "${handle}",
+  "followers": <integer>,
+  "following": <integer>,
+  "tweets": <integer>,
+  "verified": <boolean>,
+  "niche": "1-3 word niche e.g. Web3 KOL, Crypto Trader, Tech CEO, Ghost Account, Bot Farmer",
+  "tier": "one of: Nano, Micro, Mid-tier, Macro, Mega, Icon",
+  "engagementRate": <float 0.001 to 0.25>,
+  "pfpValue": <integer USD>,
+  "headerValue": <integer USD>,
+  "pfpNote": "1 short sentence on pfp value",
+  "headerNote": "1 short sentence on header value",
+  "factors": [
+    {"name":"factor name","value":"short value","direction":"up|down|neutral"}
+  ],
+  "roast": "If total pfpValue+headerValue is under $10: write a SAVAGE, funny, brutally honest roast — 2-3 sentences, no mercy, make fun of their irrelevance, ghost-account energy, bot vibes, or digital obscurity. Be creative and specific to their niche. If total is $10 or above: write a genuine 1-2 sentence hype/compliment about their profile value.",
+  "isRoasted": <true if total under $10, false otherwise>
+}
+
+Valuation rules: unknown/ghost accounts worth under $10. Nano influencer pfp $10-500. Micro $500-5K. Mid-tier $5K-20K. Macro $20K-100K. Mega $100K-500K. Icon (Elon etc) $500K+. factors must have exactly 5 items covering: follower count, engagement rate, verified status, niche premium, brand consistency. Return ONLY the JSON object, no markdown, no explanation.`;
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (ANTHROPIC_API_KEY) {
+        headers['x-api-key'] = ANTHROPIC_API_KEY;
+        headers['anthropic-version'] = '2023-06-01';
+      }
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) throw new Error('API error ' + res.status);
+
+      const data = await res.json();
+      const text = data.content.map(b => b.text || '').join('').trim().replace(/```json|```/g, '').trim();
+      const d = JSON.parse(text);
+      setLoading(false);
+      renderResult(d);
+
+    } catch (e) {
+      setLoading(false);
+      showError('Could not appraise this profile. Check the handle and try again. If running locally, make sure your API key is set.');
+    }
+  }
+
+  function renderResult(d) {
+    const initial = (d.name || d.handle || '?')[0].toUpperCase();
+    const pfpEl = document.getElementById('pfpDisplay');
+    pfpEl.textContent = initial;
+
+    const isRoasted = d.isRoasted || (d.pfpValue + d.headerValue < 10);
+    pfpEl.style.borderColor = isRoasted ? '#e24b4a' : 'var(--gold)';
+    pfpEl.style.color = isRoasted ? '#e24b4a' : 'var(--gold)';
+
+    document.getElementById('verifiedBadge').style.display = d.verified ? 'flex' : 'none';
+    document.getElementById('profileName').textContent = d.name || d.handle;
+    document.getElementById('profileHandle').textContent = '@' + d.handle;
+
+    document.getElementById('profileStats').innerHTML = [
+      { num: fmtNum(d.followers), lbl: 'Followers' },
+      { num: fmtNum(d.following), lbl: 'Following' },
+      { num: fmtNum(d.tweets), lbl: 'Tweets' },
+      { num: (d.engagementRate * 100).toFixed(1) + '%', lbl: 'Est. ER' }
+    ].map(s => `<div class="stat"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('');
+
+    document.getElementById('pfpValue').textContent = usd(d.pfpValue);
+    document.getElementById('pfpNote').textContent = d.pfpNote;
+    document.getElementById('headerValue').textContent = usd(d.headerValue);
+    document.getElementById('headerNote').textContent = d.headerNote;
+
+    const total = d.pfpValue + d.headerValue;
+    document.getElementById('totalValue').textContent = usd(total);
+
+    const tierColors = {
+      'Nano': '#888', 'Micro': '#639922', 'Mid-tier': '#185fa5',
+      'Macro': '#854f0b', 'Mega': '#d4537e', 'Icon': '#f0c040'
+    };
+    const tc = tierColors[d.tier] || '#888';
+    document.getElementById('tierBadgeWrap').innerHTML =
+      `<span style="color:${tc};font-weight:700;letter-spacing:.12em">${d.tier.toUpperCase()} · ${d.niche}</span>`;
+
+    document.getElementById('factorsList').innerHTML = (d.factors || []).map(f => `
+      <div class="factor-row">
+        <span class="factor-name">${f.name}</span>
+        <span class="factor-val ${f.direction}">${f.direction === 'up' ? '▲' : f.direction === 'down' ? '▼' : '—'} ${f.value}</span>
+      </div>`).join('');
+
+    const roastEl = document.getElementById('roastSection');
+    if (isRoasted) {
+      roastEl.innerHTML = `
+        <div class="roast-box bad">
+          <span class="roast-emoji">💀🔥</span>
+          <div class="roast-label bad">Roast mode activated — profile worth under $10</div>
+          <div class="roast-text bad">${d.roast}</div>
+        </div>`;
+    } else {
+      roastEl.innerHTML = `
+        <div class="roast-box good">
+          <span class="roast-emoji">💰✨</span>
+          <div class="roast-label good">Profile appraised — solid value detected</div>
+          <div class="roast-text good">${d.roast}</div>
+        </div>`;
+    }
+
+    document.getElementById('resultCard').classList.add('visible');
+  }
+
+  function shareResult() {
+    const name = document.getElementById('profileName').textContent;
+    const total = document.getElementById('totalValue').textContent;
+    const isRoasted = !!document.querySelector('.roast-box.bad');
+    const text = isRoasted
+      ? `💀 Just got roasted by PFP Appraiser — ${name}'s X profile is worth ${total} lmaooo\n\nCheck yours 👀 alameencrypts.github.io/pfp-appraiser`
+      : `💰 ${name}'s X profile assets are worth ${total} — appraised by PFP Appraiser\n\nCheck yours 🔥 alameencrypts.github.io/pfp-appraiser`;
+
+    if (navigator.share) {
+      navigator.share({ text });
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.share-btn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied to clipboard ✓';
+        setTimeout(() => btn.textContent = orig, 2000);
+      });
+    }
+  }
+
+  document.getElementById('handleInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') appraise();
+  });
+</script>
+</body>
+</html>
