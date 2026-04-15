@@ -378,47 +378,4 @@ function renderProfile(d){
   document.getElementById('s-fing').textContent=fmtM(d.following||0);
   document.getElementById('s-tweets').textContent=fmtM(d.tweet_count||0);
   document.getElementById('s-likes').textContent=fmtM(d.avg_likes||0);
-  document.getElementById('s-rts').textContent=fmtM(d.avg_retweets||0);
-  document.getElementById('s-reps').textContent=fmtM(d.avg_replies||0);
-
-  var v=calcValuation(d);
-  document.getElementById('s-er').textContent=v.engRate;
-  document.getElementById('pfp-val').textContent=usd(v.pfpValue);
-  document.getElementById('pfp-note').textContent=v.pfpNote;
-  document.getElementById('header-val').textContent=usd(v.headerValue);
-  document.getElementById('header-note').textContent=v.headerNote;
-  document.getElementById('total-amount').textContent=usd(v.total);
-  document.getElementById('total-tier').textContent=v.tier+' Tier · '+fmtM(d.followers||0)+' Followers · '+v.engRate+' Engagement Rate';
-
-  setAvatar(document.getElementById('sc-av'),d.profile_image,d.name);
-  document.getElementById('sc-amt').textContent=usd(v.total);
-  document.getElementById('sc-tier').textContent=v.tier+' · '+v.engRate+' ER';
-  document.getElementById('sc-pfp').textContent=usd(v.pfpValue);
-  document.getElementById('sc-header').textContent=usd(v.headerValue);
-  document.getElementById('sc-fol').textContent=fmtM(d.followers||0);
-  document.getElementById('sc-htag').textContent='@'+(d.handle||'—');
-
-  document.getElementById('profile-card').style.display='block';
-  document.getElementById('total-card').style.display='block';
-  document.getElementById('share-section').style.display='block';
-}
-
-document.getElementById('dl-btn').addEventListener('click',function(){
-  var btn=document.getElementById('dl-btn');
-  btn.disabled=true;btn.textContent='Generating...';
-  html2canvas(document.getElementById('share-card'),{scale:2,backgroundColor:'#0a0800',useCORS:true,allowTaint:true,logging:false})
-  .then(function(canvas){
-    var a=document.createElement('a');
-    var h=(document.getElementById('sc-htag').textContent||'card').replace('@','');
-    a.download='pfp-valuation-'+h+'.png';
-    a.href=canvas.toDataURL('image/png');
-    a.click();
-  }).catch(function(){alert('Download failed. Try again.');})
-  .finally(function(){
-    btn.disabled=false;
-    btn.innerHTML='<svg viewBox="0 0 24 24" width="14" height="14" fill="#000"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4zm-6 4v-2h12v2H6z"/></svg> Download Valuation Card';
-  });
-});
-</script>
-</body>
-</html>
+  document.getElementById('s-rts').textContent
