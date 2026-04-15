@@ -1,343 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PFP Appraiser — X Profile Valuation Engine</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
-  <style>
-    :root{--gold:#f0c040;--black:#0a0a0a;--offwhite:#f5f0e8;--green:#1db954;--border:rgba(240,192,64,0.25)}
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{min-height:100%;background:#0a0a0a}
-    .app{font-family:'Syne',sans-serif;background:#0a0a0a;color:#f5f0e8;min-height:100vh;position:relative;overflow-x:hidden}
-    .noise{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");opacity:.6}
-    .grid-bg{position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(240,192,64,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(240,192,64,0.04) 1px,transparent 1px);background-size:40px 40px}
-    .inner{position:relative;z-index:1;max-width:540px;margin:0 auto;padding:36px 24px 60px}
-    .header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:36px}
-    .logo{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-family:'Space Mono',monospace}
-    .logo span{color:rgba(240,192,64,0.4)}
-    .tagline{font-size:10px;color:rgba(245,240,232,0.35);letter-spacing:.12em;text-transform:uppercase;font-family:'Space Mono',monospace;margin-top:4px}
-    .live-dot{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--green);font-family:'Space Mono',monospace;letter-spacing:.08em}
-    .live-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.8s ease-in-out infinite}
-    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-    .hero{margin-bottom:28px}
-    .hero h1{font-size:clamp(28px,8vw,48px);font-weight:800;line-height:1.05;letter-spacing:-.02em}
-    .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--gold),#fff8dc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-    .hero p{font-size:12px;color:rgba(245,240,232,0.4);margin-top:10px;line-height:1.65;font-family:'Space Mono',monospace}
-    .examples{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-    .example-chip{font-size:11px;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.5);border:1px solid rgba(240,192,64,0.15);border-radius:20px;padding:4px 10px;cursor:pointer;transition:all .15s;background:none}
-    .example-chip:hover{color:var(--gold);border-color:rgba(240,192,64,0.4);background:rgba(240,192,64,0.05)}
-    .search-wrap{display:flex;gap:10px;margin-bottom:20px;align-items:stretch}
-    .handle-input{flex:1;background:rgba(245,240,232,0.04);border:1px solid var(--border);border-radius:8px;padding:14px 16px;font-size:15px;font-weight:600;font-family:'Syne',sans-serif;color:var(--offwhite);outline:none;transition:border-color .2s}
-    .handle-input::placeholder{color:rgba(245,240,232,0.2);font-weight:400}
-    .handle-input:focus{border-color:var(--gold)}
-    .appraise-btn{background:var(--gold);color:var(--black);border:none;border-radius:8px;padding:14px 22px;font-size:13px;font-weight:700;font-family:'Syne',sans-serif;letter-spacing:.04em;cursor:pointer;white-space:nowrap;transition:all .15s;text-transform:uppercase}
-    .appraise-btn:hover{background:#f8d060;transform:translateY(-1px)}
-    .appraise-btn:active{transform:translateY(0)}
-    .appraise-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
-    .error-msg{background:rgba(230,48,48,0.08);border:1px solid rgba(230,48,48,0.3);border-radius:8px;padding:14px 16px;font-size:12px;color:#f08080;font-family:'Space Mono',monospace;display:none;margin-bottom:14px;line-height:1.5}
-    .error-msg.visible{display:block}
-    .loading-state{text-align:center;padding:40px 0;display:none}
-    .loading-state.visible{display:block}
-    .loader-text{font-size:11px;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.5);letter-spacing:.1em;animation:blink 1.2s step-end infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
-    .result-card{background:rgba(245,240,232,0.03);border:1px solid var(--border);border-radius:12px;padding:24px;display:none;animation:fadeUp .35s ease}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    .result-card.visible{display:block}
-    .profile-row{display:flex;gap:16px;align-items:flex-start;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)}
-    .pfp-wrap{position:relative;flex-shrink:0}
-    .pfp-img{width:72px;height:72px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;display:block}
-    .pfp-placeholder{width:72px;height:72px;border-radius:50%;border:2px solid var(--gold);background:linear-gradient(135deg,#1a1500,#2a2000);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--gold)}
-    .verified-badge{position:absolute;bottom:0;right:0;width:22px;height:22px;border-radius:50%;background:#1d9bf0;border:2px solid #0a0a0a;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff}
-    .profile-info{flex:1;min-width:0}
-    .profile-name{font-size:18px;font-weight:700;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .profile-handle{font-size:12px;color:rgba(245,240,232,0.4);font-family:'Space Mono',monospace;margin-bottom:10px}
-    .profile-stats{display:flex;gap:16px;flex-wrap:wrap}
-    .stat .num{font-size:14px;font-weight:700}
-    .stat .lbl{font-size:10px;color:rgba(245,240,232,0.35);text-transform:uppercase;letter-spacing:.08em;font-family:'Space Mono',monospace}
-    .verdict-box{background:rgba(29,185,84,0.07);border:1px solid rgba(29,185,84,0.3);border-radius:10px;padding:18px 20px;margin-bottom:20px}
-    .verdict-label{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-family:'Space Mono',monospace;color:var(--green);margin-bottom:8px}
-    .verdict-emoji{font-size:22px;margin-bottom:8px;display:block}
-    .verdict-text{font-size:13px;line-height:1.65;font-family:'Space Mono',monospace;color:#7defa7}
-    .section-title{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(240,192,64,0.6);font-family:'Space Mono',monospace;margin-bottom:14px}
-    .val-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
-    .val-card{background:rgba(245,240,232,0.03);border:1px solid rgba(240,192,64,0.12);border-radius:8px;padding:14px 16px}
-    .val-card .label{font-size:10px;color:rgba(245,240,232,0.35);text-transform:uppercase;letter-spacing:.1em;font-family:'Space Mono',monospace;margin-bottom:6px}
-    .val-card .amount{font-size:20px;font-weight:800;color:var(--gold);letter-spacing:-.01em}
-    .val-card .note{font-size:10px;color:rgba(245,240,232,0.3);margin-top:3px;font-family:'Space Mono',monospace;line-height:1.5}
-    .total-box{background:linear-gradient(135deg,rgba(240,192,64,0.08),rgba(240,192,64,0.03));border:1px solid rgba(240,192,64,0.4);border-radius:10px;padding:18px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-    .total-label{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-family:'Space Mono',monospace;color:rgba(240,192,64,0.6);margin-bottom:4px}
-    .total-amount{font-size:32px;font-weight:800;color:var(--gold)}
-    .eng-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
-    .eng-card{background:rgba(245,240,232,0.03);border:1px solid rgba(245,240,232,0.06);border-radius:8px;padding:10px 12px;text-align:center}
-    .eng-card .num{font-size:16px;font-weight:700;color:var(--offwhite)}
-    .eng-card .lbl{font-size:10px;color:rgba(245,240,232,0.35);text-transform:uppercase;letter-spacing:.08em;font-family:'Space Mono',monospace;margin-top:2px}
-    .factor-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(245,240,232,0.05);font-size:12px}
-    .factor-row:last-child{border-bottom:none}
-    .factor-name{color:rgba(245,240,232,0.55);font-family:'Space Mono',monospace}
-    .factor-val{font-weight:600;font-size:11px;font-family:'Space Mono',monospace}
-    .factor-val.up{color:var(--green)}
-    .factor-val.down{color:#e24b4a}
-    .factor-val.neutral{color:rgba(245,240,232,0.4)}
-    .share-btn{width:100%;padding:13px;border-radius:8px;background:transparent;border:1px solid var(--border);color:var(--offwhite);font-family:'Syne',sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;cursor:pointer;text-transform:uppercase;transition:all .2s;margin-top:4px}
-    .share-btn:hover{background:rgba(240,192,64,0.08);border-color:var(--gold);color:var(--gold)}
-    .disclaimer{font-size:10px;color:rgba(245,240,232,0.18);font-family:'Space Mono',monospace;text-align:center;margin-top:32px;line-height:1.7}
-    .disclaimer a{color:rgba(240,192,64,0.45);text-decoration:none}
-    .disclaimer a:hover{color:var(--gold)}
-    .real-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'Space Mono',monospace;background:rgba(29,185,84,0.12);color:var(--green);border:1px solid rgba(29,185,84,0.3);border-radius:20px;padding:2px 8px;margin-left:8px;vertical-align:middle}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFP Appraiser — Profile Valuation</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#09080a;
+  --bg2:#0f0d10;
+  --bg3:#141214;
+  --gold:#c9a84c;
+  --gold2:#e8c96d;
+  --gold3:#f5e6b8;
+  --gold-dim:rgba(201,168,76,0.12);
+  --gold-dim2:rgba(201,168,76,0.06);
+  --gold-border:rgba(201,168,76,0.25);
+  --gold-border2:rgba(201,168,76,0.12);
+  --t1:#f0ead8;
+  --t2:#9a8f7a;
+  --t3:#4a4438;
+  --r:4px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--t1);font-family:'Montserrat',sans-serif;font-size:13px;line-height:1.7;min-height:100vh;}
+
+/* subtle noise overlay */
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5;}
+
+.pg{max-width:780px;margin:0 auto;padding:0 28px 100px;position:relative;z-index:1;}
+
+/* top rule */
+.top-rule{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin-bottom:0;}
+
+nav{display:flex;align-items:center;justify-content:space-between;padding:32px 0 52px;}
+.logo{display:flex;flex-direction:column;gap:2px;text-decoration:none;}
+.logo-main{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gold2);}
+.logo-sub{font-size:8px;font-weight:500;letter-spacing:.35em;text-transform:uppercase;color:var(--t3);}
+.nav-ornament{display:flex;align-items:center;gap:10px;font-size:8px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--t3);}
+.nav-ornament::before,.nav-ornament::after{content:'';width:18px;height:1px;background:var(--t3);}
+
+/* hero */
+.hero{text-align:center;margin-bottom:56px;padding:0 20px;}
+.hero-ornament{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:24px;}
+.hero-ornament-line{width:40px;height:1px;background:linear-gradient(90deg,transparent,var(--gold));}
+.hero-ornament-line.r{background:linear-gradient(90deg,var(--gold),transparent);}
+.hero-ornament-diamond{width:5px;height:5px;background:var(--gold);transform:rotate(45deg);}
+.hero-eyebrow{font-size:9px;font-weight:600;letter-spacing:.35em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;}
+h1{font-family:'Cormorant Garamond',serif;font-size:clamp(42px,7vw,72px);font-weight:300;line-height:1.1;letter-spacing:.04em;color:var(--t1);margin-bottom:20px;}
+h1 em{font-style:italic;color:var(--gold2);}
+.hero-sub{font-size:12px;font-weight:400;color:var(--t2);max-width:400px;margin:0 auto;line-height:2;letter-spacing:.04em;}
+
+/* search */
+.search-wrap{margin-bottom:48px;}
+.search-box{display:flex;gap:0;border:1px solid var(--gold-border);background:var(--bg2);}
+.search-input{flex:1;background:transparent;border:none;padding:16px 22px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:400;color:var(--t1);outline:none;letter-spacing:.05em;}
+.search-input::placeholder{color:var(--t3);font-style:italic;}
+.search-divider{width:1px;background:var(--gold-border);}
+.search-btn{background:var(--gold);color:#09080a;border:none;padding:16px 32px;font-family:'Montserrat',sans-serif;font-weight:600;font-size:10px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;transition:background .2s;white-space:nowrap;}
+.search-btn:hover{background:var(--gold2);}
+.search-btn:disabled{opacity:.5;cursor:not-allowed;}
+.search-hint{font-size:9px;font-weight:500;letter-spacing:.12em;color:var(--t3);margin-top:10px;text-align:center;text-transform:uppercase;}
+
+.err-box{background:rgba(180,50,50,0.08);border:1px solid rgba(180,50,50,0.25);color:#c47a7a;padding:14px 20px;font-size:11px;margin-bottom:24px;display:none;letter-spacing:.05em;font-style:italic;}
+
+/* divider */
+.divider{display:flex;align-items:center;gap:12px;margin:32px 0;}
+.divider-line{flex:1;height:1px;background:var(--gold-border2);}
+.divider-diamond{width:4px;height:4px;background:var(--gold);transform:rotate(45deg);flex-shrink:0;}
+
+/* profile card */
+.profile-card{border:1px solid var(--gold-border2);background:var(--bg2);margin-bottom:24px;display:none;}
+.profile-top-bar{height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.profile-body{padding:28px 30px;}
+.profile-head{display:flex;align-items:center;gap:20px;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--gold-border2);}
+.pav{width:64px;height:64px;border-radius:50%;border:1px solid var(--gold-border);overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:300;color:var(--gold);background:var(--bg3);flex-shrink:0;}
+.pav img{width:100%;height:100%;object-fit:cover;}
+.profile-meta{}
+.pname{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:500;letter-spacing:.05em;color:var(--t1);line-height:1.2;}
+.phandle{font-size:10px;font-weight:500;letter-spacing:.15em;color:var(--t2);margin-top:3px;text-transform:uppercase;}
+.verified-badge{display:inline-flex;align-items:center;gap:5px;font-size:8px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);background:var(--gold-dim2);border:1px solid var(--gold-border2);padding:3px 10px;margin-top:6px;}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--gold-border2);margin-bottom:1px;}
+.eng-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--gold-border2);}
+.stat-cell{background:var(--bg2);padding:16px 18px;}
+.stat-l{font-size:8px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--t3);margin-bottom:6px;}
+.stat-v{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;color:var(--t1);letter-spacing:.02em;}
+
+/* valuation */
+.val-section{margin-top:28px;}
+.val-heading{font-size:8px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.val-heading::after{content:'';flex:1;height:1px;background:var(--gold-border2);}
+.val-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.val-card{border:1px solid var(--gold-border2);padding:20px;background:var(--bg3);position:relative;overflow:hidden;}
+.val-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.val-card-l{font-size:8px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--t3);margin-bottom:10px;}
+.val-card-v{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;color:var(--gold2);letter-spacing:.02em;line-height:1;}
+.val-card-note{font-size:10px;color:var(--t3);margin-top:8px;font-style:italic;line-height:1.6;}
+
+/* total */
+.total-card{border:1px solid var(--gold-border);background:var(--bg2);padding:32px 30px;margin-bottom:24px;display:none;position:relative;overflow:hidden;text-align:center;}
+.total-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold2),transparent);}
+.total-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.total-eyebrow{font-size:8px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--t3);margin-bottom:12px;}
+.total-amount{font-family:'Cormorant Garamond',serif;font-size:clamp(48px,8vw,80px);font-weight:300;color:var(--gold2);letter-spacing:.02em;line-height:1;margin-bottom:10px;}
+.total-tier{font-size:9px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.total-note{font-size:10px;color:var(--t3);font-style:italic;line-height:1.8;max-width:400px;margin:0 auto;}
+
+/* share card */
+.share-section{margin-bottom:28px;display:none;}
+.share-heading{font-size:8px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--t3);margin-bottom:16px;text-align:center;}
+
+.share-card{
+  background:#0a0800;
+  border:1px solid rgba(201,168,76,0.3);
+  padding:30px 32px;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  min-height:200px;
+}
+.share-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);}
+.share-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);}
+.share-card-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 70% 50%,rgba(201,168,76,0.06) 0%,transparent 60%);pointer-events:none;}
+
+.sc-left{flex:1;position:relative;z-index:1;}
+.sc-brand{display:flex;align-items:center;gap:8px;margin-bottom:18px;}
+.sc-brand-name{font-family:'Cormorant Garamond',serif;font-size:14px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#c9a84c;}
+.sc-brand-dot{width:3px;height:3px;background:#c9a84c;border-radius:50%;}
+.sc-brand-sub{font-size:7px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:#4a4438;}
+
+.sc-eyebrow{font-size:7px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:#4a4438;margin-bottom:4px;}
+.sc-amount{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:#c9a84c;line-height:1;margin-bottom:4px;letter-spacing:.02em;}
+.sc-tier{font-size:8px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:#6a5f4a;margin-bottom:16px;}
+
+.sc-row{display:flex;gap:10px;margin-bottom:14px;}
+.sc-mini{border:1px solid rgba(201,168,76,0.12);padding:8px 12px;background:rgba(255,255,255,0.02);}
+.sc-mini-l{font-size:7px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#4a4438;margin-bottom:3px;}
+.sc-mini-v{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:400;color:#e8c96d;letter-spacing:.02em;}
+
+.sc-bot{display:flex;align-items:center;justify-content:space-between;}
+.sc-badge{font-size:7px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#c9a84c;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.15);padding:3px 9px;}
+.sc-url{font-size:7px;font-weight:500;letter-spacing:.1em;color:#2a2418;}
+
+.sc-right{flex-shrink:0;width:130px;display:flex;flex-direction:column;align-items:center;position:relative;z-index:1;}
+.sc-aura-wrap{position:relative;width:90px;height:90px;display:flex;align-items:center;justify-content:center;}
+.sc-aura-wrap::before{content:'';position:absolute;width:120px;height:120px;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,0.25) 0%,rgba(201,168,76,0.05) 50%,transparent 70%);}
+.sc-avatar{width:76px;height:76px;border-radius:50%;border:1px solid rgba(201,168,76,0.5);overflow:hidden;display:flex;align-items:center;justify-content:center;background:#1a1408;font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;color:#c9a84c;position:relative;z-index:2;}
+.sc-avatar img{width:100%;height:100%;object-fit:cover;}
+.sc-handle{font-size:8px;font-weight:500;letter-spacing:.15em;color:rgba(201,168,76,0.5);text-align:center;margin-top:10px;text-transform:uppercase;}
+
+.dl-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--gold);color:#09080a;border:none;padding:15px 28px;font-family:'Montserrat',sans-serif;font-weight:600;font-size:9px;letter-spacing:.22em;text-transform:uppercase;cursor:pointer;width:100%;margin-top:14px;transition:background .2s;}
+.dl-btn:hover{background:var(--gold2);}
+.dl-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--gold-border2);display:flex;justify-content:space-between;font-size:9px;font-weight:500;letter-spacing:.1em;color:var(--t3);flex-wrap:wrap;gap:8px;text-transform:uppercase;}
+footer a{color:var(--t2);text-decoration:none;}
+footer a:hover{color:var(--gold);}
+
+@media(max-width:600px){
+  .val-grid{grid-template-columns:1fr;}
+  .stats-row{grid-template-columns:1fr 1fr;}
+  .eng-row{grid-template-columns:1fr 1fr;}
+  h1{font-size:42px;}
+  .share-card{flex-direction:column;}
+  .sc-right{width:100%;flex-direction:row;justify-content:center;gap:16px;}
+}
+</style>
 </head>
 <body>
-<div class="app">
-  <div class="noise"></div>
-  <div class="grid-bg"></div>
-  <div class="inner">
+<div class="top-rule"></div>
+<div class="pg">
 
-    <div class="header">
-      <div>
-        <div class="logo">PFP<span>/</span>Appraiser</div>
-        <div class="tagline">X profile valuation engine</div>
-      </div>
-      <div class="live-dot">LIVE</div>
-    </div>
+<nav>
+  <div class="logo">
+    <div class="logo-main">PFP Appraiser</div>
+    <div class="logo-sub">Profile Valuation House</div>
+  </div>
+  <div class="nav-ornament" id="nav-date"></div>
+</nav>
 
-    <div class="hero">
-      <h1>How much is your<br><em>profile worth?</em></h1>
-      <p>Enter any X handle. We fetch your real stats and calculate your pfp + header value as brand assets.</p>
-    </div>
+<div class="hero">
+  <div class="hero-ornament">
+    <div class="hero-ornament-line"></div>
+    <div class="hero-ornament-diamond"></div>
+    <div class="hero-ornament-line r"></div>
+  </div>
+  <div class="hero-eyebrow">Exclusive Profile Appraisal</div>
+  <h1>What Is Your<br>Profile <em>Truly Worth?</em></h1>
+  <p class="hero-sub">We assess the monetary value of your X profile picture and header as premium digital brand assets — using your real follower and engagement data.</p>
+</div>
 
-    <div class="examples">
-      <button class="example-chip" onclick="tryExample('elonmusk')">@elonmusk</button>
-      <button class="example-chip" onclick="tryExample('De_Ciphera')">@De_Ciphera</button>
-      <button class="example-chip" onclick="tryExample('VitalikButerin')">@VitalikButerin</button>
-      <button class="example-chip" onclick="tryExample('cobie')">@cobie</button>
-    </div>
+<div class="search-wrap">
+  <div class="search-box">
+    <input type="text" class="search-input" id="handle-input" placeholder="Enter X handle — e.g. De_Ciphera" maxlength="50">
+    <div class="search-divider"></div>
+    <button class="search-btn" id="search-btn">Appraise</button>
+  </div>
+  <div class="search-hint">Enter username with or without @</div>
+</div>
 
-    <div class="search-wrap">
-      <input class="handle-input" id="handleInput" type="text" placeholder="@handle or username" maxlength="50" autocomplete="off" spellcheck="false"/>
-      <button class="appraise-btn" id="appraiseBtn" onclick="appraise()">Appraise</button>
-    </div>
+<div class="err-box" id="err-box"></div>
 
-    <div class="error-msg" id="errorMsg"></div>
-    <div class="loading-state" id="loadingState">
-      <div class="loader-text" id="loaderText">FETCHING PROFILE DATA...</div>
-    </div>
-
-    <div class="result-card" id="resultCard">
-
-      <div class="profile-row">
-        <div class="pfp-wrap">
-          <div id="pfpWrap"></div>
-          <div class="verified-badge" id="verifiedBadge" style="display:none">✓</div>
-        </div>
-        <div class="profile-info">
-          <div class="profile-name" id="profileName">—</div>
-          <div class="profile-handle" id="profileHandle">@—</div>
-          <div class="profile-stats" id="profileStats"></div>
+<div class="profile-card" id="profile-card">
+  <div class="profile-top-bar"></div>
+  <div class="profile-body">
+    <div class="profile-head">
+      <div class="pav" id="p-av">?</div>
+      <div class="profile-meta">
+        <div class="pname" id="p-name">—</div>
+        <div class="phandle" id="p-handle">—</div>
+        <div class="verified-badge" id="p-verified" style="display:none">
+          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          X Premium Verified
         </div>
       </div>
+    </div>
 
-      <div id="verdictSection"></div>
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-l">Followers</div><div class="stat-v" id="s-fol">—</div></div>
+      <div class="stat-cell"><div class="stat-l">Following</div><div class="stat-v" id="s-fing">—</div></div>
+      <div class="stat-cell"><div class="stat-l">Tweets</div><div class="stat-v" id="s-tweets">—</div></div>
+    </div>
+    <div class="eng-row">
+      <div class="stat-cell"><div class="stat-l">Avg Likes</div><div class="stat-v" id="s-likes">—</div></div>
+      <div class="stat-cell"><div class="stat-l">Avg Retweets</div><div class="stat-v" id="s-rts">—</div></div>
+      <div class="stat-cell"><div class="stat-l">Avg Replies</div><div class="stat-v" id="s-reps">—</div></div>
+      <div class="stat-cell"><div class="stat-l">Eng. Rate</div><div class="stat-v" id="s-er">—</div></div>
+    </div>
 
-      <div class="section-title">Breakdown</div>
+    <div class="val-section">
+      <div class="val-heading">Asset Valuation</div>
       <div class="val-grid">
         <div class="val-card">
-          <div class="label">Profile picture</div>
-          <div class="amount" id="pfpValue">—</div>
-          <div class="note" id="pfpNote">—</div>
+          <div class="val-card-l">Profile Picture</div>
+          <div class="val-card-v" id="pfp-val">$0</div>
+          <div class="val-card-note" id="pfp-note">—</div>
         </div>
         <div class="val-card">
-          <div class="label">Header / banner</div>
-          <div class="amount" id="headerValue">—</div>
-          <div class="note" id="headerNote">—</div>
+          <div class="val-card-l">Header / Banner</div>
+          <div class="val-card-v" id="header-val">$0</div>
+          <div class="val-card-note" id="header-note">—</div>
         </div>
       </div>
-
-      <div class="total-box">
-        <div>
-          <div class="total-label">Total profile value</div>
-          <div style="font-size:10px;color:rgba(240,192,64,0.4);font-family:'Space Mono',monospace;margin-top:2px" id="tierBadgeWrap"></div>
-        </div>
-        <div class="total-amount" id="totalValue">—</div>
-      </div>
-
-      <div class="section-title">Real engagement stats <span class="real-badge">Live data</span></div>
-      <div class="eng-grid" id="engGrid"></div>
-
-      <div class="section-title" style="margin-top:20px">Value factors</div>
-      <div id="factorsList" style="margin-bottom:20px"></div>
-
-      <button class="share-btn" onclick="shareResult()">Share this appraisal ↗</button>
     </div>
-
-    <div class="disclaimer">
-      Valuations powered by real X data + AI analysis.<br>
-      Not financial advice. For creator insight purposes.<br><br>
-      Built by <a href="https://x.com/De_Ciphera" target="_blank">@De_Ciphera</a>
-    </div>
-
   </div>
 </div>
 
+<div class="total-card" id="total-card">
+  <div class="total-eyebrow">Total Profile Asset Value</div>
+  <div class="total-amount" id="total-amount">$0</div>
+  <div class="total-tier" id="total-tier">—</div>
+  <div class="total-note">Valuation reflects brand placement value based on real follower count, engagement rate, and verified status. For sponsorship and creator insight purposes.</div>
+</div>
+
+<div class="share-section" id="share-section">
+  <div class="share-heading">Your Valuation Certificate — Download &amp; Share</div>
+  <div class="share-card" id="share-card">
+    <div class="share-card-bg"></div>
+    <div class="sc-left">
+      <div class="sc-brand">
+        <div class="sc-brand-name">PFP Appraiser</div>
+        <div class="sc-brand-dot"></div>
+        <div class="sc-brand-sub">Profile Valuation</div>
+      </div>
+      <div class="sc-eyebrow">Total Profile Asset Value</div>
+      <div class="sc-amount" id="sc-amt">$0</div>
+      <div class="sc-tier" id="sc-tier">—</div>
+      <div class="sc-row">
+        <div class="sc-mini"><div class="sc-mini-l">PFP</div><div class="sc-mini-v" id="sc-pfp">—</div></div>
+        <div class="sc-mini"><div class="sc-mini-l">Header</div><div class="sc-mini-v" id="sc-header">—</div></div>
+        <div class="sc-mini"><div class="sc-mini-l">Followers</div><div class="sc-mini-v" id="sc-fol">—</div></div>
+      </div>
+      <div class="sc-bot">
+        <div class="sc-badge">Real Data · Formula Valuation</div>
+        <div class="sc-url">alameencrypts.github.io/pfp-appraiser</div>
+      </div>
+    </div>
+    <div class="sc-right">
+      <div class="sc-aura-wrap">
+        <div class="sc-avatar" id="sc-av">?</div>
+      </div>
+      <div class="sc-handle" id="sc-htag">—</div>
+    </div>
+  </div>
+  <button class="dl-btn" id="dl-btn">
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="#09080a"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4zm-6 4v-2h12v2H6z"/></svg>
+    Download Valuation Card
+  </button>
+</div>
+
+<footer>
+  <span>PFP Appraiser &copy; 2026 — For creator insight &amp; brand valuation purposes</span>
+  <span>Built by <a href="https://x.com/De_Ciphera" target="_blank">@De_Ciphera</a></span>
+</footer>
+</div>
+
 <script>
-  const API_URL = 'https://pfp-worth-api.onrender.com/api/appraise';
+var API_URL = 'https://pfp-worth-api.onrender.com/api/appraise';
 
-  const LOADER_MSGS = [
-    'FETCHING PROFILE DATA...', 'PULLING REAL FOLLOWER STATS...',
-    'ANALYZING ENGAGEMENT RATE...', 'SCANNING TWEET HISTORY...',
-    'CALCULATING PFP VALUE...', 'APPRAISING HEADER ASSET...',
-    'FINALIZING VALUATION...'
-  ];
+function fmtM(n){return n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':String(Math.round(n));}
+function usd(n){
+  if(n>=1000000) return '$'+(n/1000000).toFixed(2)+'M';
+  if(n>=1000) return '$'+(n/1000).toFixed(1)+'K';
+  return '$'+Math.round(n);
+}
 
-  let loaderInterval = null;
+function calcValuation(d){
+  var followers = d.followers || 0;
+  var isVerified = d.is_verified || false;
+  var avgLikes = d.avg_likes || 0;
+  var avgRt = d.avg_retweets || 0;
+  var avgRep = d.avg_replies || 0;
+  var engRate = followers > 0 ? (avgLikes + avgRt + avgRep) / followers : 0;
 
-  function tryExample(h) {
-    document.getElementById('handleInput').value = h;
-    appraise();
+  var pfpBase = 0;
+  if(followers >= 10000000) pfpBase = 600000;
+  else if(followers >= 2000000) pfpBase = 150000;
+  else if(followers >= 500000) pfpBase = 40000;
+  else if(followers >= 100000) pfpBase = 10000;
+  else if(followers >= 10000) pfpBase = 2000;
+  else if(followers >= 1000) pfpBase = 200;
+  else pfpBase = 20;
+
+  var engMult = 1;
+  if(engRate > 0.05) engMult = 1.8;
+  else if(engRate > 0.02) engMult = 1.4;
+  else if(engRate > 0.005) engMult = 1.1;
+  else if(engRate < 0.001) engMult = 0.7;
+
+  var verMult = isVerified ? 1.3 : 1.0;
+  var pfpValue = Math.round(pfpBase * engMult * verMult);
+  var headerValue = Math.round(pfpValue * 0.4);
+
+  var tier = 'Nano';
+  if(followers >= 10000000) tier = 'Icon';
+  else if(followers >= 2000000) tier = 'Mega';
+  else if(followers >= 500000) tier = 'Macro';
+  else if(followers >= 100000) tier = 'Mid-tier';
+  else if(followers >= 10000) tier = 'Micro';
+
+  return {
+    pfpValue: pfpValue,
+    headerValue: headerValue,
+    total: pfpValue + headerValue,
+    tier: tier,
+    engRate: (engRate * 100).toFixed(2) + '%',
+    pfpNote: isVerified ? 'Premium boost applied — verified accounts command higher brand rates.' : 'Based on follower reach and engagement positioning.',
+    headerNote: 'Header valued as prime above-the-fold sponsor placement.'
+  };
+}
+
+document.getElementById('nav-date').textContent = new Date().toLocaleString('en-US',{month:'long',year:'numeric'});
+document.getElementById('search-btn').addEventListener('click', doAppraise);
+document.getElementById('handle-input').addEventListener('keydown', function(e){if(e.key==='Enter') doAppraise();});
+
+function doAppraise(){
+  var raw = document.getElementById('handle-input').value.trim().replace('@','');
+  if(!raw) return;
+  var btn = document.getElementById('search-btn');
+  var err = document.getElementById('err-box');
+  btn.disabled = true; btn.textContent = 'Appraising...';
+  err.style.display = 'none';
+  document.getElementById('profile-card').style.display = 'none';
+  document.getElementById('total-card').style.display = 'none';
+  document.getElementById('share-section').style.display = 'none';
+
+  fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({handle: raw})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.error){ err.textContent = data.error; err.style.display = 'block'; }
+    else { renderProfile(data); }
+  })
+  .catch(function(){ err.textContent = 'Unable to reach the appraisal service. Please try again shortly.'; err.style.display = 'block'; })
+  .finally(function(){ btn.disabled = false; btn.textContent = 'Appraise'; });
+}
+
+function setAvatar(el, imgUrl, name){
+  if(imgUrl){
+    imgUrl = imgUrl.replace('_normal','_400x400');
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){ el.innerHTML=''; el.appendChild(img); img.style.cssText='width:100%;height:100%;object-fit:cover;'; };
+    img.onerror = function(){ el.textContent=(name||'?')[0].toUpperCase(); };
+    img.src = imgUrl;
+  } else {
+    el.textContent = (name||'?')[0].toUpperCase();
   }
+}
 
-  function fmtNum(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
-    return String(Math.round(n));
-  }
+function renderProfile(d){
+  setAvatar(document.getElementById('p-av'), d.profile_image, d.name);
+  document.getElementById('p-name').textContent = d.name || '—';
+  document.getElementById('p-handle').textContent = '@' + (d.handle || '—');
+  document.getElementById('p-verified').style.display = d.is_verified ? 'inline-flex' : 'none';
+  document.getElementById('s-fol').textContent = fmtM(d.followers||0);
+  document.getElementById('s-fing').textContent = fmtM(d.following||0);
+  document.getElementById('s-tweets').textContent = fmtM(d.tweet_count||0);
+  document.getElementById('s-likes').textContent = fmtM(d.avg_likes||0);
+  document.getElementById('s-rts').textContent = fmtM(d.avg_retweets||0);
+  document.getElementById('s-reps').textContent = fmtM(d.avg_replies||0);
 
-  function usd(n) {
-    if (n >= 1000000) return '$' + (n / 1000000).toFixed(2) + 'M';
-    if (n >= 1000) return '$' + (n / 1000).toFixed(1) + 'K';
-    return '$' + Math.round(n);
-  }
+  var v = calcValuation(d);
+  document.getElementById('s-er').textContent = v.engRate;
+  document.getElementById('pfp-val').textContent = usd(v.pfpValue);
+  document.getElementById('pfp-note').textContent = v.pfpNote;
+  document.getElementById('header-val').textContent = usd(v.headerValue);
+  document.getElementById('header-note').textContent = v.headerNote;
+  document.getElementById('total-amount').textContent = usd(v.total);
+  document.getElementById('total-tier').textContent = v.tier + ' Tier · ' + fmtM(d.followers||0) + ' Followers · ' + v.engRate + ' Engagement';
 
-  function setLoading(on) {
-    document.getElementById('loadingState').classList.toggle('visible', on);
-    document.getElementById('appraiseBtn').disabled = on;
-    if (on) {
-      let i = 0;
-      const el = document.getElementById('loaderText');
-      el.textContent = LOADER_MSGS[0];
-      loaderInterval = setInterval(() => {
-        i = (i + 1) % LOADER_MSGS.length;
-        el.textContent = LOADER_MSGS[i];
-      }, 800);
-    } else {
-      clearInterval(loaderInterval);
-    }
-  }
+  setAvatar(document.getElementById('sc-av'), d.profile_image, d.name);
+  document.getElementById('sc-amt').textContent = usd(v.total);
+  document.getElementById('sc-tier').textContent = v.tier + ' · ' + v.engRate + ' ER';
+  document.getElementById('sc-pfp').textContent = usd(v.pfpValue);
+  document.getElementById('sc-header').textContent = usd(v.headerValue);
+  document.getElementById('sc-fol').textContent = fmtM(d.followers||0);
+  document.getElementById('sc-htag').textContent = '@' + (d.handle||'—');
 
-  async function appraise() {
-    const handle = document.getElementById('handleInput').value.trim().replace(/^@/, '');
-    if (!handle) return;
+  document.getElementById('profile-card').style.display = 'block';
+  document.getElementById('total-card').style.display = 'block';
+  document.getElementById('share-section').style.display = 'block';
+}
 
-    document.getElementById('resultCard').classList.remove('visible');
-    document.getElementById('errorMsg').classList.remove('visible');
-    setLoading(true);
-
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handle })
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'API error');
-      }
-
-      const d = await res.json();
-      setLoading(false);
-      renderResult(d);
-
-    } catch (e) {
-      setLoading(false);
-      const el = document.getElementById('errorMsg');
-      el.textContent = e.message || 'Could not appraise this profile. Try again.';
-      el.classList.add('visible');
-    }
-  }
-
-  function renderResult(d) {
-    // PFP — show real image if available
-    const pfpWrap = document.getElementById('pfpWrap');
-    if (d.profile_image) {
-      pfpWrap.innerHTML = `<img class="pfp-img" src="${d.profile_image.replace('_normal', '_400x400')}" alt="${d.name}" onerror="this.outerHTML='<div class=pfp-placeholder>${(d.name||d.handle||'?')[0].toUpperCase()}</div>'"/>`;
-    } else {
-      pfpWrap.innerHTML = `<div class="pfp-placeholder">${(d.name||d.handle||'?')[0].toUpperCase()}</div>`;
-    }
-
-    document.getElementById('verifiedBadge').style.display = d.is_verified ? 'flex' : 'none';
-    document.getElementById('profileName').textContent = d.name || d.handle;
-    document.getElementById('profileHandle').textContent = '@' + d.handle;
-
-    document.getElementById('profileStats').innerHTML = [
-      { num: fmtNum(d.followers), lbl: 'Followers' },
-      { num: fmtNum(d.following), lbl: 'Following' },
-      { num: fmtNum(d.tweet_count), lbl: 'Tweets' },
-      { num: d.engagement_rate + '%', lbl: 'Eng. Rate' }
-    ].map(s => `<div class="stat"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('');
-
-    document.getElementById('pfpValue').textContent = usd(d.pfpValue);
-    document.getElementById('pfpNote').textContent = d.pfpNote;
-    document.getElementById('headerValue').textContent = usd(d.headerValue);
-    document.getElementById('headerNote').textContent = d.headerNote;
-
-    const total = d.pfpValue + d.headerValue;
-    document.getElementById('totalValue').textContent = usd(total);
-
-    const tierColors = {
-      'Nano':'#888','Micro':'#639922','Mid-tier':'#185fa5',
-      'Macro':'#854f0b','Mega':'#d4537e','Icon':'#f0c040'
-    };
-    const tc = tierColors[d.tier] || '#888';
-    document.getElementById('tierBadgeWrap').innerHTML =
-      `<span style="color:${tc};font-weight:700;letter-spacing:.12em">${d.tier.toUpperCase()} · ${d.niche}</span>`;
-
-    // Real engagement stats
-    document.getElementById('engGrid').innerHTML = [
-      { num: fmtNum(d.avg_likes), lbl: 'Avg Likes' },
-      { num: fmtNum(d.avg_retweets), lbl: 'Avg RTs' },
-      { num: fmtNum(d.avg_replies), lbl: 'Avg Replies' },
-      { num: fmtNum(d.avg_views || 0), lbl: 'Avg Views' },
-      { num: d.engagement_rate + '%', lbl: 'Eng. Rate' },
-      { num: d.is_verified ? 'Yes' : 'No', lbl: 'Verified' }
-    ].map(s => `<div class="eng-card"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('');
-
-    document.getElementById('factorsList').innerHTML = (d.factors || []).map(f => `
-      <div class="factor-row">
-        <span class="factor-name">${f.name}</span>
-        <span class="factor-val ${f.direction}">${f.direction==='up'?'▲':f.direction==='down'?'▼':'—'} ${f.value}</span>
-      </div>`).join('');
-
-    document.getElementById('verdictSection').innerHTML = `
-      <div class="verdict-box">
-        <span class="verdict-emoji">💰✨</span>
-        <div class="verdict-label">Profile appraised</div>
-        <div class="verdict-text">${d.verdict}</div>
-      </div>`;
-
-    document.getElementById('resultCard').classList.add('visible');
-  }
-
-  function shareResult() {
-    const name = document.getElementById('profileName').textContent;
-    const total = document.getElementById('totalValue').textContent;
-    const text = `💰 ${name}'s X profile assets are worth ${total}\n\nCheck yours 🔥 ${window.location.href}`;
-    if (navigator.share) {
-      navigator.share({ text });
-    } else {
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = document.querySelector('.share-btn');
-        const orig = btn.textContent;
-        btn.textContent = 'Copied to clipboard ✓';
-        setTimeout(() => btn.textContent = orig, 2000);
-      });
-    }
-  }
-
-  document.getElementById('handleInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') appraise();
+document.getElementById('dl-btn').addEventListener('click', function(){
+  var btn = document.getElementById('dl-btn');
+  btn.disabled = true; btn.textContent = 'Preparing certificate...';
+  html2canvas(document.getElementById('share-card'),{
+    scale:2, backgroundColor:'#0a0800', useCORS:true, allowTaint:true, logging:false
+  }).then(function(canvas){
+    var a = document.createElement('a');
+    var h = (document.getElementById('sc-htag').textContent||'card').replace('@','');
+    a.download = 'pfp-valuation-'+h+'.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  }).catch(function(){ alert('Download failed. Please try again.'); })
+  .finally(function(){
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="#09080a"><path d="M12 16l-4-4h2.5V4h3v8H16l-4 4zm-6 4v-2h12v2H6z"/></svg> Download Valuation Card';
   });
+});
 </script>
 </body>
 </html>
