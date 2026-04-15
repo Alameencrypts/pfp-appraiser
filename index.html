@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/jpeg" href="photo_2026-04-15_09-01-03.jpg">
+<link rel="shortcut icon" type="image/jpeg" href="photo_2026-04-15_09-01-03.jpg">
+<link rel="apple-touch-icon" href="photo_2026-04-15_09-01-03.jpg">
 <title>PFP Appraiser — Profile Valuation</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -277,34 +279,39 @@ function calcValuation(d){
   var avgRep = d.avg_replies||0;
   var engRate = followers>0?(avgLikes+avgRt+avgRep)/followers:0;
 
-  // Smooth linear-interpolation base for proper spread across all tiers
+  // Base value from followers — smooth interpolation per follower count
   var pfpBase=0;
   if(followers<=0) pfpBase=5;
   else if(followers<500) pfpBase=5+followers*0.02;
   else if(followers<1000) pfpBase=10+followers*0.04;
-  else if(followers<5000) pfpBase=50+(followers-1000)*0.06;
-  else if(followers<10000) pfpBase=290+(followers-5000)*0.14;
-  else if(followers<25000) pfpBase=990+(followers-10000)*0.2;
-  else if(followers<50000) pfpBase=3990+(followers-25000)*0.4;
-  else if(followers<100000) pfpBase=13990+(followers-50000)*0.8;
-  else if(followers<250000) pfpBase=53990+(followers-100000)*2;
-  else if(followers<500000) pfpBase=353990+(followers-250000)*4;
-  else if(followers<1000000) pfpBase=1353990+(followers-500000)*8;
-  else if(followers<5000000) pfpBase=5353990+(followers-1000000)*12;
-  else pfpBase=53353990+(followers-5000000)*20;
+  else if(followers<5000) pfpBase=50+(followers-1000)*0.07;
+  else if(followers<10000) pfpBase=330+(followers-5000)*0.18;
+  else if(followers<25000) pfpBase=1230+(followers-10000)*0.35;
+  else if(followers<50000) pfpBase=6480+(followers-25000)*0.7;
+  else if(followers<100000) pfpBase=24000+(followers-50000)*1.5;
+  else if(followers<250000) pfpBase=99000+(followers-100000)*4;
+  else if(followers<500000) pfpBase=699000+(followers-250000)*8;
+  else if(followers<1000000) pfpBase=2699000+(followers-500000)*14;
+  else if(followers<5000000) pfpBase=9699000+(followers-1000000)*18;
+  else pfpBase=81699000+(followers-5000000)*22;
 
-  // Engagement multiplier
+  // Engagement adds $50-$300 difference within the same tier
+  // Uses actual engagement rate to create meaningful but not huge differences
+  var engBonus = followers * engRate * 15;
+  engBonus = Math.min(engBonus, pfpBase * 0.4); // cap at 40% of base
+
+  // Fine engagement multiplier for small spread
   var engMult=1;
-  if(engRate>0.08) engMult=2.2;
-  else if(engRate>0.05) engMult=1.8;
-  else if(engRate>0.03) engMult=1.5;
-  else if(engRate>0.01) engMult=1.2;
+  if(engRate>0.08) engMult=1.4;
+  else if(engRate>0.05) engMult=1.25;
+  else if(engRate>0.03) engMult=1.15;
+  else if(engRate>0.01) engMult=1.05;
   else if(engRate>0.005) engMult=1.0;
-  else if(engRate>0.001) engMult=0.8;
-  else engMult=0.5;
+  else if(engRate>0.001) engMult=0.9;
+  else engMult=0.75;
 
-  var verMult=isVerified?1.35:1.0;
-  var pfpValue=Math.round(pfpBase*engMult*verMult);
+  var verMult=isVerified?1.2:1.0;
+  var pfpValue=Math.round((pfpBase+engBonus)*engMult*verMult);
   var headerValue=Math.round(pfpValue*0.4);
 
   var tier='Nano';
